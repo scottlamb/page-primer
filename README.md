@@ -25,12 +25,16 @@ concept of `mlock()` should apply to any Unix-based system.
 
 1.  Near the top of `main()`, before spawning any threads, add this code:
     ```rust
-    page_primer::prime()
+    let prime_out = page_primer::prime()
         .mlock(true)
         .remap(true) // if desired, see notes.
         .run();
     ```
-2. If using remap, add the following to your
+2.  Further down `main()`, after logging providers have been set up, add this code:
+    ```rust
+    prime_out.log();
+    ```
+3. If using remap, add the following to your
    [`.cargo/config.toml`](https://doc.rust-lang.org/cargo/reference/config.html):
    ```toml
    [target.x86_64-unknown-linux-gnu]
@@ -41,7 +45,7 @@ concept of `mlock()` should apply to any Unix-based system.
        "-C", "link-arg=max-page-size=2097152",
    ]
    ```
-3. Verify the performance improvement!
+4. Verify the performance improvement!
 
 One caveat is that if you later `dlopen` some dynamic library, this code will
 not know to prime it.

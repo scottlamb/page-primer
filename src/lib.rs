@@ -9,6 +9,7 @@ mod linux;
 ///
 /// By default, *nothing* will happen; call `mlock` and/or `remap` to change this.
 #[derive(Default, Debug, PartialEq, Eq)]
+#[must_use = "Options do nothing without Options::run"]
 pub struct Options {
     mlock: bool,
     remap: bool,
@@ -30,15 +31,39 @@ impl Options {
     }
 
     /// Runs the selected operations.
-    pub fn run(self) {
+    #[must_use]
+    pub fn run(self) -> Output {
         #[cfg(target_os = "linux")]
-        linux::run(self)
+        return linux::run(self);
+
+        #[cfg(not(target_os = "linux"))]
+        return Output { log: Vec::new() };
+    }
+}
+
+#[must_use = "Output does nothing unless Output::log or Output::eprint is called"]
+pub struct Output {
+    log: Vec<(log::Level, String)>,
+}
+
+impl Output {
+    /// Logs output using the [`log`] crate.
+    pub fn log(&self) {
+        for (level, msg) in &self.log {
+            log::log!(*level, "{msg}");
+        }
+    }
+
+    /// Prints output to stderr.
+    pub fn eprint(&self) {
+        for (_level, msg) in &self.log {
+            eprintln!("{msg}");
+        }
     }
 }
 
 /// Returns a builder for priming operations.
 #[inline]
-#[must_use]
 pub fn prime() -> Options {
     Options::default()
 }

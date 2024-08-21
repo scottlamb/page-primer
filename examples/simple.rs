@@ -18,7 +18,13 @@ fn bar() {
 }
 
 fn main() {
+    // Typically this runs right at the start of `main`. Save the result for printing later.
+    let prime_out = page_primer::prime().mlock(true).remap(true).run();
+
     env_logger::init();
-    page_primer::prime().mlock(true).remap(true).run();
+
+    // Now logging is available, so use it.
+    prime_out.log();
+
     bar();
 }

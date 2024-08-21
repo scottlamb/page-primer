@@ -1,6 +1,7 @@
 // Copyright (C) 2024 Scott Lamb <slamb@slamb.org>
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+use crate::Output;
 use libc::memfd_create;
 use std::ffi::{CStr, OsString};
 use std::fmt::Write as _;
@@ -454,19 +455,21 @@ impl Segment {
     }
 }
 
-fn log_maps(when: &'static str) {
+fn log_maps(when: &'static str, log: &mut Vec<(log::Level, String)>) {
     // `/proc/self/maps`` might be useful for debugging. But take the logged version below with a
     // grain of salt because mappings might change due to the logging's own memory allocations.
-    if log::log_enabled!(log::Level::Trace) {
+    log.push((
+        log::Level::Trace,
         match std::fs::read("/proc/self/maps") {
-            Ok(maps) => log::trace!("maps {when}:\n{}", String::from_utf8_lossy(&maps[..])),
-            Err(e) => log::trace!("couldn't read maps: {}", e),
-        }
-    }
+            Ok(maps) => format!("maps {when}:\n{}", String::from_utf8_lossy(&maps[..])),
+            Err(e) => format!("couldn't read maps: {e}"),
+        },
+    ));
 }
 
-pub(crate) fn run(options: super::Options) {
-    log_maps("before");
+pub(crate) fn run(options: super::Options) -> Output {
+    let mut log = Vec::new();
+    log_maps("before", &mut log);
 
     // This function replaces portions of the memory map referring to program text. It assumes
     // nothing else is changing them, for example by `dlopen(3)` and `dlclose(3)` calls. That
@@ -474,12 +477,18 @@ pub(crate) fn run(options: super::Options) {
     match num_threads::num_threads() {
         Some(t) if t.get() == 1 => {}
         Some(t) => {
-            log::warn!("Skipping page priming: there are {t} threads running; must be 1!");
-            return;
+            log.push((
+                log::Level::Warn,
+                format!("Skipping page priming: there are {t} threads running; must be 1!"),
+            ));
+            return Output { log };
         }
         None => {
-            log::warn!("Skipping page priming: unable to get thread count!");
-            return;
+            log.push((
+                log::Level::Warn,
+                "Skipping page priming: unable to get thread count!".to_owned(),
+            ));
+            return Output { log };
         }
     }
 
@@ -487,11 +496,17 @@ pub(crate) fn run(options: super::Options) {
         match huge_page_size() {
             Ok(Some(s)) => Some(mask(s)),
             Ok(None) => {
-                log::warn!("Huge page remapping requested by huge pages unavailable.");
+                log.push((
+                    log::Level::Warn,
+                    "Huge page remapping requested but huge pages unavailable.".to_owned(),
+                ));
                 None
             }
             Err(e) => {
-                log::warn!("Unable to describe huge page size: {e}");
+                log.push((
+                    log::Level::Warn,
+                    format!("Unable to describe huge page size: {e}"),
+                ));
                 None
             }
         }
@@ -499,9 +514,12 @@ pub(crate) fn run(options: super::Options) {
         None
     };
 
-    if huge_page_mask.is_none() && !options.remap {
-        log::warn!("No page priming operations to perform.");
-        return;
+    if huge_page_mask.is_none() && !options.mlock {
+        log.push((
+            log::Level::Warn,
+            "No page priming operations to perform.".to_owned(),
+        ));
+        return Output { log };
     }
 
     let mut ctx = Context {
@@ -518,6 +536,7 @@ pub(crate) fn run(options: super::Options) {
 
     // Create a nice log message for debugging.
     let mut msg = String::with_capacity(128 * ctx.segments.len());
+    msg.push_str("primed pages:\n");
     let mut last_object_i = None;
     for obj in &mut ctx.segments {
         if Some(obj.object_i) != last_object_i {
@@ -558,8 +577,9 @@ pub(crate) fn run(options: super::Options) {
         msg.push('\n');
         last_object_i = Some(obj.object_i);
     }
-    log::info!("primed pages:\n{}", msg);
-    log_maps("after");
+    log.push((log::Level::Info, msg));
+    log_maps("after", &mut log);
+    Output { log }
 }
 #[cfg(test)]
 mod tests {

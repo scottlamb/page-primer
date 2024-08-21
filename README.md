@@ -54,14 +54,13 @@ not know to prime it.
 
 ### Background on virtual memory: pages, huge pages, and transpage huge pages
 
-Modern OSs/CPUs use [virtual
-*memory](https://en.wikipedia.org/wiki/Virtual_memory): memory addresses seen by
-userspace processes don't directly represent physical memory locations. Instead,
-the virtual address space is divided into "pages" whose meaning is defined by
-"page tables" maintained by the OS. The CPU's Memory Mapping Unit (MMU) consults
-the page tables to translate virtual memory addresses to physical memory
-addresses. This mapping helps isolate processes from each other for security and
-reliability, among other benefits.
+Modern OSs/CPUs use [virtual memory](https://en.wikipedia.org/wiki/Virtual_memory):
+memory addresses seen by userspace processes don't directly represent physical
+memory locations. Instead, the virtual address space is divided into "pages"
+whose meaning is defined by "page tables" maintained by the OS. The CPU's
+Memory Mapping Unit (MMU) consults the page tables to translate virtual memory
+addresses to physical memory addresses. This mapping helps isolate processes
+from each other for security and reliability, among other benefits.
 
 As system RAM sizes have grown to gigabytes and beyond, the page size generally
 hasn't changed: it's still 4 KiB on Linux/x86_64. This is a problem! The page

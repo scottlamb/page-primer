@@ -74,13 +74,14 @@ pages](https://www.kernel.org/doc/html/latest/admin-guide/mm/hugetlbpage.html).
 These represent 256 or 262,144 as much RAM for the same TLB space. When they're
 used extensively, far less of the CPU's time is spent waiting on TLB misses.
 
-Linux even has [transparent huge
+Linux even supports [transparent huge
 pages (THP)](https://www.kernel.org/doc/html/latest/admin-guide/mm/transhuge.html)
-now, which are used automatically. But only sometimes. It will not use
-transparent huge pages on "real" filesystems (e.g. ext4 or btrfs) unless your
-kernel was compiled with the experimental option
-`CONFIG_READ_ONLY_THP_FOR_FS=y`. Most distro kernels are not. That means your
-program's executable will not take advantage of huge pages. Unless...
+which are used automatically. But only sometimes. It will not use
+transparent huge pages on file-backed mappings unless your kernel was compiled
+with the experimental option
+[`CONFIG_READ_ONLY_THP_FOR_FS=y`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/mm/Kconfig?h=v6.11-rc4&id=47ac09b91befbb6a235ab620c32af719f8208399#n861).
+Most distro kernels are not. That means your program's executable will not take
+advantage of huge pages. Unless...
 
 ### Remapping for huge pages
 
